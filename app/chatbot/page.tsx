@@ -1,18 +1,24 @@
 "use client";
 
 import ProtectedPage from "@/components/ProtectedPage";
-import { useState } from "react";
 import Navbar from "@/components/Navbar";
+import { useState } from "react";
 
 // @ts-ignore
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 
+interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
 export default function ChatbotPage() {
   const [message, setMessage] = useState("");
-  const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const {
     transcript,
@@ -24,9 +30,18 @@ export default function ChatbotPage() {
   async function askAI() {
     const finalMessage = message || transcript;
 
-    if (!finalMessage) return;
+    if (!finalMessage.trim()) return;
 
     setLoading(true);
+
+    // Add user message
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "user",
+        text: finalMessage,
+      },
+    ]);
 
     try {
       const response = await fetch("/api/chatbot", {
@@ -41,15 +56,27 @@ export default function ChatbotPage() {
 
       const data = await response.json();
 
-      if (data.success) {
-        setReply(data.reply);
-      } else {
-        setReply("Error: " + data.error);
-      }
-    } catch (error) {
-      setReply("Failed to connect to AI");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: data.success
+            ? data.reply
+            : "Error: " + data.error,
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "Failed to connect to AI",
+        },
+      ]);
     }
 
+    setMessage("");
+    resetTranscript();
     setLoading(false);
   }
 
@@ -70,93 +97,93 @@ export default function ChatbotPage() {
       <Navbar />
 
       <main className="min-h-screen p-10 text-white">
+
         <h1 className="text-5xl font-bold mb-8">
           🤖 Smart Krishi AI Chatbot
         </h1>
 
         {browserSupportsSpeechRecognition && (
           <>
-            <div className="flex flex-wrap gap-4 mb-6">
+            <div className="flex gap-4 mb-4 flex-wrap">
               <button
                 onClick={startListening}
-                className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-xl"
+                className="bg-green-600 px-5 py-3 rounded-xl"
               >
-                🎤 Start Recording
+                🎤 Start
               </button>
 
               <button
                 onClick={stopListening}
-                className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-xl"
+                className="bg-red-600 px-5 py-3 rounded-xl"
               >
-                🛑 Stop Recording
+                Stop
               </button>
 
               <button
                 onClick={resetTranscript}
-                className="bg-gray-600 hover:bg-gray-700 px-6 py-3 rounded-xl"
+                className="bg-gray-700 px-5 py-3 rounded-xl"
               >
-                🗑 Clear Voice
+                Clear Voice
               </button>
             </div>
 
-            <div className="mb-4">
-              <span
-                className={`px-4 py-2 rounded-lg ${
-                  listening
-                    ? "bg-green-600"
-                    : "bg-gray-700"
-                }`}
-              >
-                {listening
-                  ? "🎙 Listening..."
-                  : "🔇 Not Listening"}
-              </span>
+            <div className="mb-6">
+              {listening ? "🎙 Listening..." : "🔇 Not Listening"}
             </div>
 
-            <div className="bg-gray-800 border border-gray-700 p-4 rounded-xl mb-6">
-              <h2 className="font-bold mb-2">
-                🎤 Voice Transcript
-              </h2>
-
-              <p>
-                {transcript || "Speak something..."}
-              </p>
+            <div className="bg-gray-800 p-4 rounded-xl mb-6">
+              {transcript}
             </div>
           </>
         )}
 
-        <input
-          type="text"
-          value={message}
-          onChange={(e) =>
-            setMessage(e.target.value)
-          }
-          placeholder="Type your farming question..."
-          className="w-full p-4 rounded-xl bg-gray-800 text-white placeholder-gray-400 border border-gray-600 mb-6"
-        />
+        <div className="space-y-4 mb-8 max-h-[500px] overflow-y-auto">
 
-        <button
-          onClick={askAI}
-          className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl"
-        >
-          Ask AI
-        </button>
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={
+                msg.role === "user"
+                  ? "bg-blue-700 p-4 rounded-xl ml-auto w-fit max-w-[80%]"
+                  : "bg-gray-800 p-4 rounded-xl mr-auto w-fit max-w-[80%]"
+              }
+            >
+              <strong>
+                {msg.role === "user" ? "You" : "AI"}
+              </strong>
 
-        {loading && (
-          <div className="mt-6">
-            Thinking...
-          </div>
-        )}
+              <p className="mt-2 whitespace-pre-wrap">
+                {msg.text}
+              </p>
+            </div>
+          ))}
 
-        {reply && (
-          <div className="mt-6 bg-gray-800 border border-gray-700 p-6 rounded-xl whitespace-pre-wrap">
-            <h2 className="text-xl font-bold mb-3">
-              🤖 AI Response
-            </h2>
+          {loading && (
+            <div className="bg-gray-700 p-4 rounded-xl w-fit">
+              🤖 Thinking...
+            </div>
+          )}
+        </div>
 
-            {reply}
-          </div>
-        )}
+        <div className="flex gap-4">
+
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Ask any farming question..."
+            className="flex-1 p-4 rounded-xl bg-gray-800 border border-gray-700"
+          />
+
+          <button
+            onClick={askAI}
+            disabled={loading}
+            className="bg-blue-600 px-6 rounded-xl"
+          >
+            Send
+          </button>
+
+        </div>
+
       </main>
     </>
   );
