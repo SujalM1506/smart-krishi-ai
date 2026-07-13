@@ -1,25 +1,34 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(req: Request) {
   try {
     const { image, mimeType } = await req.json();
 
-    const genAI = new GoogleGenerativeAI(
-      process.env.GEMINI_API_KEY!
-    );
+   console.log("KEY VALUE:", JSON.stringify(process.env.GEMINI_API_KEY));
+console.log("KEY LENGTH:", process.env.GEMINI_API_KEY?.length);
+
+const genAI = new GoogleGenerativeAI(
+  process.env.GEMINI_API_KEY!
+);
 
     const model = genAI.getGenerativeModel({
-model: "gemini-2.5-flash-lite",    });
+      model: "gemini-2.5-flash-lite",
+    });
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: image,
-          mimeType: mimeType,
-        },
-      },
-      `
+    let result;
+
+    // Retry up to 3 times if Gemini is busy
+    for (let i = 0; i < 3; i++) {
+      try {
+        result = await model.generateContent([
+          {
+            inlineData: {
+              data: image,
+              mimeType,
+            },
+          },
+          `
 You are an expert agricultural scientist.
 
 Analyze the uploaded crop image.
@@ -46,51 +55,57 @@ Rules:
 - Give prevention tips.
 - Return ONLY JSON.
 `,
-    ]);
+        ]);
 
-    const aiResponse = result.response.text();
+        break;
+      } catch (err) {
+        if (i === 2) throw err;
+
+        console.log(
+          `Gemini busy. Retrying (${i + 1}/3)...`
+        );
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 3000)
+        );
+      }
+    }
+
+    const aiResponse = result!.response.text();
 
     console.log("AI Response:", aiResponse);
 
-    try {
-      const cleanJson = aiResponse
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
+    const cleanJson = aiResponse
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
 
-      const diseaseData = JSON.parse(cleanJson);
+    const diseaseData = JSON.parse(cleanJson);
 
-      const insertResult = await supabase
-        .from("disease_history")
-        .insert([
-          {
-            crop_name: diseaseData.crop || "Unknown",
-            disease_name:
-              diseaseData.disease || "Unknown",
-          },
-        ]);
+    const insertResult = await supabaseAdmin
+      .from("disease_history")
+      .insert([
+        {
+          crop_name: diseaseData.crop,
+          disease_name: diseaseData.disease,
+        },
+      ]);
 
-      console.log(
-        "Disease History Saved:",
-        insertResult
-      );
-    } catch (saveError) {
-      console.log(
-        "Database Save Error:",
-        saveError
-      );
-    }
+    console.log("Disease History Saved:", insertResult);
 
     return Response.json({
       success: true,
-      result: aiResponse,
+      result: cleanJson,
     });
   } catch (error) {
-  console.error("FULL ERROR:", error);
+    console.error("FULL ERROR:", error);
 
-  return Response.json({
-    success: false,
-    error: String(error),
-  });
-}
+    return Response.json({
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown Error",
+    });
+  }
 }
