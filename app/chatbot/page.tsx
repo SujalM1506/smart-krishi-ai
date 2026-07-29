@@ -96,9 +96,9 @@ export default function ChatbotPage() {
       <ProtectedPage />
       <Navbar />
 
-      <main className="min-h-screen p-10 text-white">
+      <main className="min-h-screen p-4 sm:p-6 md:p-10 text-white">
 
-        <h1 className="text-5xl font-bold mb-8">
+        <h1 className="text-3xl sm:text-5xl font-bold mb-8">
           🤖 Smart Krishi AI Chatbot
         </h1>
 
@@ -165,13 +165,13 @@ export default function ChatbotPage() {
           )}
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
 
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Ask any farming question..."
-            className="flex-1 p-4 rounded-xl bg-gray-800 border border-gray-700"
+            className="w-full sm:flex-1 p-4 rounded-xl bg-gray-800 border border-gray-700"
           />
 
           <button

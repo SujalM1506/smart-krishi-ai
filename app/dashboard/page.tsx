@@ -51,8 +51,8 @@ export default function DashboardPage() {
     <>
       <Navbar />
 
-      <main className="min-h-screen p-10 text-white">
-        <h1 className="text-5xl font-bold mb-8">
+      <main className="min-h-screen p-4 sm:p-6 md:p-10 text-white">
+        <h1 className="text-3xl sm:text-5xl font-bold mb-8">
           📊 Farmer Dashboard
         </h1>
 

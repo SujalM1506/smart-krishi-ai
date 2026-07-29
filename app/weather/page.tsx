@@ -37,12 +37,12 @@ export default function WeatherPage() {
       <ProtectedPage />
       <Navbar />
 
-      <main className="min-h-screen p-10 text-white">
-        <h1 className="text-5xl font-bold mb-8">
+      <main className="min-h-screen p-4 sm:p-6 md:p-10 text-white">
+        <h1 className="text-3xl sm:text-5xl font-bold mb-8">
           ☁ Weather Forecast
         </h1>
 
-        <div className="flex gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <input
             type="text"
             placeholder="Enter city name"
@@ -50,7 +50,7 @@ export default function WeatherPage() {
             onChange={(e) =>
               setCity(e.target.value)
             }
-            className="px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-600 placeholder-gray-400"
+            className="w-full sm:flex-1 px-4 py-3 rounded-lg bg-gray-800 text-white border border-gray-600 placeholder-gray-400"
           />
 
           <button
